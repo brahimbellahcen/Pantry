@@ -21,6 +21,12 @@ const Wishlist = lazy(() => import('@/pages/Wishlist'))
 const AccountProfile = lazy(() => import('@/pages/AccountProfile'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
+const Returns = lazy(() => import('@/pages/Returns'))
+const FlashSales = lazy(() => import('@/pages/FlashSales'))
+const LoyaltyPage = lazy(() => import('@/pages/Loyalty'))
+const Referrals = lazy(() => import('@/pages/Referrals'))
+const Subscriptions = lazy(() => import('@/pages/Subscriptions'))
+const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'))
 const AdminProducts = lazy(() => import('@/pages/admin/Products'))
 const AdminCategories = lazy(() => import('@/pages/admin/Categories'))
 const AdminOrders = lazy(() => import('@/pages/admin/Orders'))
@@ -31,7 +37,7 @@ const AdminSlots = lazy(() => import('@/pages/admin/Slots'))
 const AdminUsers = lazy(() => import('@/pages/admin/Users'))
 const AdminCSV = lazy(() => import('@/pages/admin/CSV'))
 const AdminReturns = lazy(() => import('@/pages/admin/Returns'))
-const Returns = lazy(() => import('@/pages/Returns'))
+
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -76,6 +82,10 @@ export default function App() {
       <Route path="/account/wishlist" element={<StorefrontLayout><RequireAuth><Wishlist /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/profile" element={<StorefrontLayout><RequireAuth><AccountProfile /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/returns" element={<StorefrontLayout><RequireAuth><Returns /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/loyalty" element={<StorefrontLayout><RequireAuth><LoyaltyPage /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/referrals" element={<StorefrontLayout><RequireAuth><Referrals /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/subscriptions" element={<StorefrontLayout><RequireAuth><Subscriptions /></RequireAuth></StorefrontLayout>} />
+      <Route path="/flash-sales" element={<StorefrontLayout><FlashSales /></StorefrontLayout>} />
 
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
