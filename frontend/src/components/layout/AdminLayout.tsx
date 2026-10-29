@@ -2,6 +2,7 @@ import { Link, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { LayoutDashboard, Package, Tag, ShoppingBag, Users, BarChart2, Ticket, Star, Clock, RotateCcw, FileSpreadsheet, Zap, RefreshCw } from 'lucide-react'
 import { cn } from '@/utils/format'
+import { AdminSearch } from '@/components/admin/AdminSearch'
 
 const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -56,7 +57,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
+      <div className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950 flex flex-col">
+        {/* Admin top bar with global search */}
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <AdminSearch />
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span className="hidden sm:block">admin@pantry.dev</span>
+            <Link to="/" className="text-xs text-brand-600 hover:underline">← Store</Link>
+          </div>
+        </div>
+        <main className="flex-1 p-6">{children}</main>
+      </div>
     </div>
   )
 }

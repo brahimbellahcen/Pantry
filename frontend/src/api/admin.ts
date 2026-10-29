@@ -63,6 +63,10 @@ export const adminApi = {
   // Delivery Slots
   listSlots: () => apiClient.get('/admin/delivery-slots').then(r => r.data),
   createSlot: (data: any) => apiClient.post('/admin/delivery-slots', data).then(r => r.data),
+  // Global search
+  globalSearch: (q: string) =>
+    apiClient.get('/admin/search', { params: { q } }).then(r => r.data),
+
   // Flash Sales
   listFlashSales: () => apiClient.get('/admin/flash-sales').then(r => r.data),
   createFlashSale: (data: any) => apiClient.post('/admin/flash-sales', data).then(r => r.data),

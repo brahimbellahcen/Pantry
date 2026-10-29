@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Plus, Heart, Zap } from 'lucide-react'
+import { Plus, Heart, Zap, Eye } from 'lucide-react'
 import { formatPrice } from '@/utils/format'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,7 +8,7 @@ import { toast } from 'react-hot-toast'
 import { useState, useEffect } from 'react'
 import type { Product } from '@/types'
 
-interface Props { product: Product }
+interface Props { product: Product; onQuickView?: () => void }
 
 function FlashCountdown({ seconds: initial }: { seconds: number }) {
   const [secs, setSecs] = useState(initial)
@@ -21,7 +21,7 @@ function FlashCountdown({ seconds: initial }: { seconds: number }) {
   return <span className="font-mono">{m}:{String(s).padStart(2, '0')}</span>
 }
 
-export function ProductCard({ product }: Props) {
+export function ProductCard({ product, onQuickView }: Props) {
   const { addItem } = useCart()
   const { isAuthenticated } = useAuth()
   const { toggle, isWishlisted } = useWishlist()
@@ -42,10 +42,12 @@ export function ProductCard({ product }: Props) {
   }
 
   return (
-    <Link to={`/products/${product.slug}`} className="group relative flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+    <Link to={`/products/${product.slug}`}
+      className="group relative flex flex-col rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
       <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-800">
         {product.image_url
-          ? <img src={product.image_url} alt={product.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+          ? <img src={product.image_url} alt={product.name}
+              className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
           : <div className="flex h-full items-center justify-center text-5xl">🥦</div>
         }
         {flash && (
@@ -63,13 +65,23 @@ export function ProductCard({ product }: Props) {
             -{discountPct}%
           </span>
         )}
-        {isAuthenticated && (
-          <button onClick={async (e) => { e.preventDefault(); await toggle(product.id) }}
-            className="absolute right-2 top-2 rounded-full bg-white/80 dark:bg-gray-800/80 p-1.5 shadow hover:bg-white transition-colors"
-            aria-label="Toggle wishlist">
-            <Heart className={`h-4 w-4 ${isWishlisted(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-          </button>
-        )}
+        {/* Hover actions */}
+        <div className="absolute right-2 top-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isAuthenticated && (
+            <button onClick={async (e) => { e.preventDefault(); await toggle(product.id) }}
+              className="rounded-full bg-white/90 dark:bg-gray-800/90 p-1.5 shadow hover:bg-white"
+              aria-label="Wishlist">
+              <Heart className={`h-4 w-4 ${isWishlisted(product.id) ? 'fill-red-500 text-red-500' : 'text-gray-500'}`} />
+            </button>
+          )}
+          {onQuickView && (
+            <button onClick={e => { e.preventDefault(); onQuickView() }}
+              className="rounded-full bg-white/90 dark:bg-gray-800/90 p-1.5 shadow hover:bg-white"
+              aria-label="Quick view">
+              <Eye className="h-4 w-4 text-gray-500" />
+            </button>
+          )}
+        </div>
         {!inStock && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/70 dark:bg-gray-900/70">
             <span className="rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">Out of stock</span>

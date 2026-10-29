@@ -6,14 +6,16 @@ import { useCart } from '@/contexts/CartContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useI18n } from '@/contexts/I18nContext'
 import { SearchAutocomplete } from '@/components/search/SearchAutocomplete'
+import { CartDrawer } from '@/components/cart/CartDrawer'
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuth()
   const { itemCount } = useCart()
-  const { isDark, setTheme, theme } = useTheme()
+  const { isDark, setTheme } = useTheme()
   const { lang, setLang, t } = useI18n()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
 
   const LANGS = [
     { code: 'en', label: 'English', flag: '🇺🇸' },
@@ -72,15 +74,15 @@ export function Header() {
             )}
           </div>
 
-          {/* Cart */}
-          <Link to="/cart" className="relative rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
+          {/* Cart — opens drawer */}
+          <button onClick={() => setCartOpen(true)} className="relative rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800">
             <ShoppingCart className="h-5 w-5 text-gray-700 dark:text-gray-300" />
             {itemCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
                 {itemCount > 9 ? '9+' : itemCount}
               </span>
             )}
-          </Link>
+          </button>
 
           {/* Auth */}
           {isAuthenticated ? (
@@ -127,6 +129,8 @@ export function Header() {
           )}
         </div>
       )}
+
+      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </header>
   )
 }
