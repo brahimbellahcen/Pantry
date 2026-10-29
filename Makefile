@@ -1,5 +1,9 @@
 .PHONY: deploy dev test seed migrate
 
+## ⚡ Set Vercel env vars + deploy both projects (needs VERCEL_TOKEN in backend/.env)
+setup-vercel:
+	@chmod +x scripts/vercel-setup.sh && ./scripts/vercel-setup.sh
+
 ## 🚀 Deploy to Vercel (backend + frontend) — recommended
 deploy-vercel:
 	@chmod +x scripts/deploy-vercel.sh && ./scripts/deploy-vercel.sh
