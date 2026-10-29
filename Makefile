@@ -1,6 +1,10 @@
 .PHONY: deploy dev test seed migrate
 
-## 🚀 Full free-tier deployment (run this first)
+## 🚀 Deploy to Vercel (backend + frontend) — recommended
+deploy-vercel:
+	@chmod +x scripts/deploy-vercel.sh && ./scripts/deploy-vercel.sh
+
+## 🚀 Deploy via Railway + Vercel (alternative)
 deploy:
 	@chmod +x scripts/deploy.sh && ./scripts/deploy.sh
 
