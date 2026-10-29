@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd frontend && npm ci && npm run build",
+  "outputDirectory": "frontend/dist",
+  "framework": null,
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
+  "env": {
+    "VITE_API_URL": {
+      "description": "Your Render backend URL, e.g. https://pantry-api.onrender.com/api/v1"
+    }
+  }
+}
