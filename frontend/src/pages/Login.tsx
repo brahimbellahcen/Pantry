@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
-import { toast } from 'react-hot-toast'
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'
 
 export default function Login() {
   const { login } = useAuth()
@@ -14,34 +14,33 @@ export default function Login() {
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    try {
-      await login(email, password)
-      navigate('/')
-    } catch {
-      setError('Invalid email or password')
-    } finally {
-      setLoading(false)
-    }
+    e.preventDefault(); setError(''); setLoading(true)
+    try { await login(email, password); navigate('/') }
+    catch { setError('Invalid email or password') }
+    finally { setLoading(false) }
   }
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 text-center">Sign in to Pantry</h1>
-        <form onSubmit={handleSubmit} className="card p-6 space-y-4">
-          <Input label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Input label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-          <div className="flex items-center justify-between">
-            <span />
-            <Link to="/forgot-password" className="text-xs text-brand-600 hover:underline">Forgot password?</Link>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">Sign in to Pantry</h1>
+        <div className="card p-6 space-y-4">
+          <GoogleLoginButton />
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" /><span className="text-xs text-gray-400">or</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" isLoading={loading} className="w-full">Sign In</Button>
-        </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input label="Email" type="email" required value={email} onChange={e => setEmail(e.target.value)} />
+            <Input label="Password" type="password" required value={password} onChange={e => setPassword(e.target.value)} />
+            <div className="flex justify-end">
+              <Link to="/forgot-password" className="text-xs text-brand-600 hover:underline">Forgot password?</Link>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <Button type="submit" isLoading={loading} className="w-full">Sign In</Button>
+          </form>
+        </div>
+        <p className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
           No account? <Link to="/register" className="text-brand-600 hover:underline">Sign up</Link>
         </p>
       </div>
