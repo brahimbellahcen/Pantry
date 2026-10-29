@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = "Pantry <no-reply@example.com>"
 
+    # Sentry
+    SENTRY_DSN: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.APP_CORS_ORIGINS.split(",")]
