@@ -37,6 +37,12 @@ const AdminSlots = lazy(() => import('@/pages/admin/Slots'))
 const AdminUsers = lazy(() => import('@/pages/admin/Users'))
 const AdminCSV = lazy(() => import('@/pages/admin/CSV'))
 const AdminReturns = lazy(() => import('@/pages/admin/Returns'))
+const AdminFlashSales = lazy(() => import('@/pages/admin/FlashSales'))
+const AdminSubscriptions = lazy(() => import('@/pages/admin/Subscriptions'))
+const AdminLoyalty = lazy(() => import('@/pages/admin/Loyalty'))
+const NotFound = lazy(() => import('@/pages/NotFound'))
+const OAuthCallback = lazy(() => import('@/pages/OAuthCallback'))
+const NotificationPreferences = lazy(() => import('@/pages/NotificationPreferences'))
 
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -85,6 +91,8 @@ export default function App() {
       <Route path="/account/loyalty" element={<StorefrontLayout><RequireAuth><LoyaltyPage /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/referrals" element={<StorefrontLayout><RequireAuth><Referrals /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/subscriptions" element={<StorefrontLayout><RequireAuth><Subscriptions /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/notifications" element={<StorefrontLayout><RequireAuth><NotificationPreferences /></RequireAuth></StorefrontLayout>} />
+      <Route path="/auth/callback" element={<StorefrontLayout><OAuthCallback /></StorefrontLayout>} />
       <Route path="/flash-sales" element={<StorefrontLayout><FlashSales /></StorefrontLayout>} />
 
       {/* Admin */}
@@ -99,9 +107,12 @@ export default function App() {
       <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
       <Route path="/admin/returns" element={<AdminLayout><AdminReturns /></AdminLayout>} />
       <Route path="/admin/csv" element={<AdminLayout><AdminCSV /></AdminLayout>} />
+      <Route path="/admin/flash-sales" element={<AdminLayout><AdminFlashSales /></AdminLayout>} />
+      <Route path="/admin/subscriptions" element={<AdminLayout><AdminSubscriptions /></AdminLayout>} />
+      <Route path="/admin/loyalty" element={<AdminLayout><AdminLoyalty /></AdminLayout>} />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 */}
+      <Route path="*" element={<StorefrontLayout><NotFound /></StorefrontLayout>} />
     </Routes>
   )
 }
