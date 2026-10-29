@@ -411,3 +411,46 @@ def admin_delete_slot(
         raise HTTPException(404, "Slot not found")
     slot.is_active = False
     db.commit()
+
+
+# ── Return requests ───────────────────────────────────────────────────────────
+
+from app.models.return_request import ReturnRequest
+from app.schemas.return_request import ReturnOut, ReturnResolve
+
+
+@router.get("/returns", response_model=list[ReturnOut])
+def admin_list_returns(
+    status: str = "pending",
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    return db.query(ReturnRequest).filter(ReturnRequest.status == status)\
+        .order_by(ReturnRequest.created_at.desc()).all()
+
+
+@router.patch("/returns/{return_id}/resolve", response_model=ReturnOut)
+def admin_resolve_return(
+    return_id: int,
+    payload: ReturnResolve,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if payload.status not in ("approved", "rejected"):
+        raise HTTPException(400, "status must be 'approved' or 'rejected'")
+    req = db.get(ReturnRequest, return_id)
+    if not req:
+        raise HTTPException(404, "Return request not found")
+    req.status = payload.status
+    req.resolution_note = payload.resolution_note
+    from datetime import datetime, timezone
+    req.resolved_at = datetime.now(timezone.utc)
+    # If approved, mark order as refunded
+    if payload.status == "approved":
+        order = db.get(Order, req.order_id)
+        if order:
+            order.status = "refunded"
+            order.payment_status = "refunded"
+    db.commit()
+    db.refresh(req)
+    return req

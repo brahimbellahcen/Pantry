@@ -5,7 +5,11 @@ from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
 from app.config import get_settings
-from app.routers import auth, users, products, categories, cart, orders, admin, reviews, wishlist, delivery_slots, coupons
+from app.routers import (
+    auth, users, products, categories, cart, orders, admin,
+    reviews, wishlist, delivery_slots, coupons,
+    returns, recommendations, autocomplete, csv_import,
+)
 from app.middleware.security import SecurityHeadersMiddleware, limiter
 from app.utils.logging import configure_logging, log
 
@@ -51,6 +55,11 @@ app.include_router(reviews.router, prefix=PREFIX)
 app.include_router(wishlist.router, prefix=PREFIX)
 app.include_router(delivery_slots.router, prefix=PREFIX)
 app.include_router(coupons.router, prefix=PREFIX)
+app.include_router(returns.router, prefix=PREFIX)
+app.include_router(returns.upload_router, prefix=PREFIX)
+app.include_router(recommendations.router, prefix=PREFIX)
+app.include_router(autocomplete.router, prefix=PREFIX)
+app.include_router(csv_import.router, prefix=PREFIX)
 
 
 @app.get("/health")

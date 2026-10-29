@@ -28,8 +28,15 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     EMAIL_FROM: str = "Pantry <no-reply@example.com>"
 
-    # Sentry
+    # Monitoring
     SENTRY_DSN: str = ""
+
+    # Storage
+    S3_BUCKET: str = ""
+    S3_REGION: str = ""
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    S3_ENDPOINT_URL: str = ""  # for R2, MinIO, Spaces
 
     @property
     def cors_origins(self) -> list[str]:
