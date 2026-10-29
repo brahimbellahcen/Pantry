@@ -1,20 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { ShoppingCart, Search, User, Menu, X } from 'lucide-react'
+import { ShoppingCart, User, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/contexts/CartContext'
+import { SearchAutocomplete } from '@/components/search/SearchAutocomplete'
 
 export function Header() {
   const { isAuthenticated, user, logout } = useAuth()
   const { itemCount } = useCart()
-  const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (search.trim()) { navigate(`/products?q=${encodeURIComponent(search.trim())}`); setSearch('') }
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
@@ -24,18 +18,10 @@ export function Header() {
           🛒 Pantry
         </Link>
 
-        {/* Search */}
-        <form onSubmit={handleSearch} className="hidden flex-1 md:flex">
-          <div className="relative w-full max-w-xl">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products…"
-              className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            />
-          </div>
-        </form>
+        {/* Search with autocomplete */}
+        <div className="hidden flex-1 md:flex">
+          <SearchAutocomplete />
+        </div>
 
         {/* Right actions */}
         <div className="ml-auto flex items-center gap-3">
