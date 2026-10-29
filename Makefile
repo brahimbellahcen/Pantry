@@ -49,3 +49,7 @@ install:
 clean-deploy:
 	rm -f .deploy-state
 	@echo "Deploy state cleared. Run 'make deploy' to redeploy."
+
+## 🚀 Full deploy from this machine (needs backend/.env)
+deploy-now:
+	@chmod +x scripts/deploy-now.sh && ./scripts/deploy-now.sh
