@@ -1,6 +1,6 @@
 import { Link, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { LayoutDashboard, Package, Tag, ShoppingBag, Users, BarChart2, Ticket, Star, Clock } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, ShoppingBag, Users, BarChart2, Ticket, Star, Clock, RotateCcw, FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/utils/format'
 
 const nav = [
@@ -12,6 +12,8 @@ const nav = [
   { to: '/admin/coupons', label: 'Coupons', icon: Ticket },
   { to: '/admin/reviews', label: 'Reviews', icon: Star },
   { to: '/admin/slots', label: 'Delivery Slots', icon: Clock },
+  { to: '/admin/returns', label: 'Returns', icon: RotateCcw },
+  { to: '/admin/csv', label: 'Import / Export', icon: FileSpreadsheet },
   { to: '/admin/users', label: 'Customers', icon: Users },
 ]
 

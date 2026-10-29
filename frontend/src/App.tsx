@@ -29,6 +29,9 @@ const AdminCoupons = lazy(() => import('@/pages/admin/Coupons'))
 const AdminReviews = lazy(() => import('@/pages/admin/Reviews'))
 const AdminSlots = lazy(() => import('@/pages/admin/Slots'))
 const AdminUsers = lazy(() => import('@/pages/admin/Users'))
+const AdminCSV = lazy(() => import('@/pages/admin/CSV'))
+const AdminReturns = lazy(() => import('@/pages/admin/Returns'))
+const Returns = lazy(() => import('@/pages/Returns'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -72,6 +75,7 @@ export default function App() {
       <Route path="/account/orders/:id" element={<StorefrontLayout><RequireAuth><OrderDetail /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/wishlist" element={<StorefrontLayout><RequireAuth><Wishlist /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/profile" element={<StorefrontLayout><RequireAuth><AccountProfile /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/returns" element={<StorefrontLayout><RequireAuth><Returns /></RequireAuth></StorefrontLayout>} />
 
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
@@ -83,6 +87,8 @@ export default function App() {
       <Route path="/admin/reviews" element={<AdminLayout><AdminReviews /></AdminLayout>} />
       <Route path="/admin/slots" element={<AdminLayout><AdminSlots /></AdminLayout>} />
       <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+      <Route path="/admin/returns" element={<AdminLayout><AdminReturns /></AdminLayout>} />
+      <Route path="/admin/csv" element={<AdminLayout><AdminCSV /></AdminLayout>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
