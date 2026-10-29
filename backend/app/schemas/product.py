@@ -17,6 +17,16 @@ class InventoryUpdate(BaseModel):
     track_inventory: bool | None = None
 
 
+class FlashSaleInfo(BaseModel):
+    id: int
+    sale_price: Decimal
+    original_price: Decimal
+    discount_type: str
+    discount_value: Decimal
+    ends_at: datetime
+    seconds_remaining: int
+
+
 class ProductBase(BaseModel):
     name: str
     description: str | None = None
@@ -74,6 +84,7 @@ class ProductListOut(BaseModel):
     category: CategoryOutBrief
     inventory: InventoryOut | None = None
     is_featured: bool
+    flash_sale: FlashSaleInfo | None = None
     model_config = {"from_attributes": True}
 
 

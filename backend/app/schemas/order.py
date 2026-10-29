@@ -56,6 +56,8 @@ class OrderOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: list[OrderItemOut]
+    loyalty_points_earned: int = 0
+    loyalty_points_used: int = 0
     model_config = {"from_attributes": True}
 
 

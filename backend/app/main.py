@@ -11,7 +11,7 @@ from app.routers import (
     auth, users, products, categories, cart, orders, admin,
     reviews, wishlist, delivery_slots, coupons,
     returns, recommendations, autocomplete, csv_import,
-    flash_sales, loyalty, referrals, subscriptions, oauth,
+    flash_sales, loyalty, referrals, subscriptions, oauth, jobs,
 )
 from app.middleware.security import SecurityHeadersMiddleware, limiter
 from app.utils.logging import configure_logging, log
@@ -47,7 +47,7 @@ for router in [
     returns.router, returns.upload_router,
     recommendations.router, autocomplete.router, csv_import.router,
     flash_sales.router, loyalty.router, referrals.router,
-    subscriptions.router, oauth.router,
+    subscriptions.router, oauth.router, jobs.router,
 ]:
     app.include_router(router, prefix=PREFIX)
 

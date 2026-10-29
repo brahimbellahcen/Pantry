@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
+    # Cron job protection (set to any random string, then pass as X-Cron-Secret header)
+    CRON_SECRET: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.APP_CORS_ORIGINS.split(",")]

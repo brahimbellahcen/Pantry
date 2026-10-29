@@ -160,6 +160,22 @@ def checkout(
         order_id=order.id,
     )
     order.payment_provider = payment_info["method"]
+
+    # ── Auto-earn loyalty points ──────────────────────────────────────────
+    from app.services.loyalty import earn_points, redeem_points
+    from decimal import Decimal as _D
+
+    loyalty_discount = _D("0")
+    if payload.loyalty_points_to_redeem > 0:
+        loyalty_discount = redeem_points(
+            current_user.id, payload.loyalty_points_to_redeem, order.id, db
+        )
+        order.discount_amount = float(_D(str(order.discount_amount)) + loyalty_discount)
+        order.total = max(0, float(_D(str(order.total)) - loyalty_discount))
+        order.loyalty_points_used = payload.loyalty_points_to_redeem
+
+    points_earned = earn_points(current_user.id, order.id, _D(str(order.total)), db)
+    order.loyalty_points_earned = points_earned
     db.commit()
     db.refresh(order)
 

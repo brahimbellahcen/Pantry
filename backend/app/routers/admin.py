@@ -271,6 +271,80 @@ def dashboard_stats(
     }
 
 
+@router.get("/stats/revenue-series")
+def revenue_series(
+    days: int = 30,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Daily revenue for the past N days — powers the dashboard area chart."""
+    from sqlalchemy import func, cast, Date
+    from datetime import datetime, timedelta, timezone
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    rows = (
+        db.query(
+            cast(Order.created_at, Date).label("day"),
+            func.sum(Order.total).label("revenue"),
+            func.count(Order.id).label("orders"),
+        )
+        .filter(Order.created_at >= since, Order.payment_status == "paid")
+        .group_by(cast(Order.created_at, Date))
+        .order_by(cast(Order.created_at, Date))
+        .all()
+    )
+    return [{"date": str(r.day), "revenue": float(r.revenue), "orders": r.orders} for r in rows]
+
+
+@router.get("/stats/top-products")
+def top_products(
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Best-selling products by units sold."""
+    from sqlalchemy import func
+    from app.models.order import OrderItem
+    rows = (
+        db.query(
+            OrderItem.product_id,
+            OrderItem.product_name,
+            func.sum(OrderItem.quantity).label("units"),
+            func.sum(OrderItem.total_price).label("revenue"),
+        )
+        .group_by(OrderItem.product_id, OrderItem.product_name)
+        .order_by(func.sum(OrderItem.quantity).desc())
+        .limit(limit)
+        .all()
+    )
+    return [{"product_id": r.product_id, "name": r.product_name,
+             "units": int(r.units), "revenue": float(r.revenue)} for r in rows]
+
+
+@router.get("/stats/customer-growth")
+def customer_growth(
+    days: int = 30,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """New customer sign-ups per day."""
+    from sqlalchemy import func, cast, Date
+    from datetime import datetime, timedelta, timezone
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    rows = (
+        db.query(
+            cast(User.created_at, Date).label("day"),
+            func.count(User.id).label("new_customers"),
+        )
+        .filter(User.created_at >= since, User.is_admin == False)
+        .group_by(cast(User.created_at, Date))
+        .order_by(cast(User.created_at, Date))
+        .all()
+    )
+    return [{"date": str(r.day), "new_customers": r.new_customers} for r in rows]
+
+
 # ── Coupons ───────────────────────────────────────────────────────────────────
 
 from app.models.coupon import Coupon
