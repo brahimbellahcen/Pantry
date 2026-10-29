@@ -9,6 +9,8 @@ import { formatPrice } from '@/utils/format'
 import { toast } from 'react-hot-toast'
 import { ShoppingCart, ChevronRight, Minus, Plus } from 'lucide-react'
 import type { Product } from '@/types'
+import { ReviewSection } from '@/components/product/ReviewSection'
+import { RelatedProducts } from '@/components/product/RelatedProducts'
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>()
@@ -113,6 +115,8 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+      <ReviewSection productId={product.id} />
+      <RelatedProducts productId={product.id} />
     </div>
   )
 }
