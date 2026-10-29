@@ -13,6 +13,7 @@ from app.routers import (
     seo, admin_search,
 )
 from app.middleware.security import SecurityHeadersMiddleware, limiter
+from app.utils.error_handlers import register_exception_handlers
 
 settings = get_settings()
 
@@ -43,6 +44,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+register_exception_handlers(app)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
