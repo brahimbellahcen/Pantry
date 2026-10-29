@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
+    # ── Google OAuth (free) ───────────────────────────────────────────────
+    # Sign up at https://console.cloud.google.com → Credentials → Create OAuth Client ID
+    # Choose "Web application", add your redirect URI (e.g. http://localhost:5173/auth/callback)
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.APP_CORS_ORIGINS.split(",")]

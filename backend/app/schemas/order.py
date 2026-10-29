@@ -29,9 +29,10 @@ class OrderCreate(BaseModel):
     billing_same_as_shipping: bool = True
     billing_address: AddressSnapshotIn | None = None
     notes: str | None = None
-    payment_method: str = "stripe"
+    payment_method: str = "cod"
     coupon_code: str | None = None
     delivery_slot_id: int | None = None
+    loyalty_points_to_redeem: int = 0
 
 
 class OrderStatusUpdate(BaseModel):

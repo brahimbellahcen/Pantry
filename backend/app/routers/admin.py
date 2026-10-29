@@ -454,3 +454,150 @@ def admin_resolve_return(
     db.commit()
     db.refresh(req)
     return req
+
+
+# ── Flash Sales ───────────────────────────────────────────────────────────────
+
+from app.models.flash_sale import FlashSale
+from app.routers.flash_sales import FlashSaleOut
+from pydantic import BaseModel as _BM
+from datetime import datetime as _dt
+
+
+class FlashSaleCreate(_BM):
+    product_id: int
+    discount_type: str
+    discount_value: float
+    starts_at: _dt
+    ends_at: _dt
+    max_quantity: int | None = None
+
+
+@router.get("/flash-sales", response_model=list[FlashSaleOut])
+def admin_list_flash_sales(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    from datetime import timezone as _tz
+    sales = db.query(FlashSale).order_by(FlashSale.ends_at.desc()).all()
+    result = []
+    now = _dt.now(_tz.utc)
+    for s in sales:
+        p = s.product
+        if not p:
+            continue
+        ends = s.ends_at
+        if ends.tzinfo is None:
+            ends = ends.replace(tzinfo=_tz.utc)
+        result.append(FlashSaleOut(
+            id=s.id, product_id=p.id, product_name=p.name,
+            product_slug=p.slug, product_image_url=p.image_url,
+            original_price=p.price, sale_price=s.sale_price(p.price),
+            discount_type=s.discount_type, discount_value=s.discount_value,
+            ends_at=ends, seconds_remaining=max(0, int((ends - now).total_seconds())),
+            max_quantity=s.max_quantity, sold_count=s.sold_count,
+        ))
+    return result
+
+
+@router.post("/flash-sales", status_code=201)
+def admin_create_flash_sale(
+    payload: FlashSaleCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if payload.discount_type not in ("percent", "fixed"):
+        raise HTTPException(400, "discount_type must be 'percent' or 'fixed'")
+    if not db.get(Product, payload.product_id):
+        raise HTTPException(404, "Product not found")
+    sale = FlashSale(**payload.model_dump())
+    db.add(sale)
+    db.commit()
+    db.refresh(sale)
+    return {"id": sale.id, "detail": "Flash sale created"}
+
+
+@router.delete("/flash-sales/{sale_id}", status_code=204)
+def admin_end_flash_sale(
+    sale_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    sale = db.get(FlashSale, sale_id)
+    if not sale:
+        raise HTTPException(404, "Flash sale not found")
+    sale.is_active = False
+    db.commit()
+
+
+# ── Product Variants ──────────────────────────────────────────────────────────
+
+from app.models.product_variant import ProductVariant
+
+
+class VariantCreate(_BM):
+    name: str
+    sku: str | None = None
+    price_modifier: float = 0
+    stock: int = 0
+    sort_order: int = 0
+
+
+class VariantOut(_BM):
+    id: int; name: str; sku: str | None; price_modifier: float
+    stock: int; is_active: bool; sort_order: int
+    model_config = {"from_attributes": True}
+
+
+@router.get("/products/{product_id}/variants", response_model=list[VariantOut])
+def list_variants(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    return db.query(ProductVariant).filter_by(product_id=product_id).all()
+
+
+@router.post("/products/{product_id}/variants", response_model=VariantOut, status_code=201)
+def create_variant(
+    product_id: int,
+    payload: VariantCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if not db.get(Product, product_id):
+        raise HTTPException(404, "Product not found")
+    v = ProductVariant(product_id=product_id, **payload.model_dump())
+    db.add(v); db.commit(); db.refresh(v)
+    return v
+
+
+@router.delete("/products/{product_id}/variants/{variant_id}", status_code=204)
+def delete_variant(
+    product_id: int, variant_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    v = db.query(ProductVariant).filter_by(id=variant_id, product_id=product_id).first()
+    if not v:
+        raise HTTPException(404, "Variant not found")
+    v.is_active = False
+    db.commit()
+
+
+# ── Loyalty overview (admin) ──────────────────────────────────────────────────
+
+@router.get("/loyalty/stats")
+def loyalty_stats(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    from sqlalchemy import func
+    from app.models.loyalty import LoyaltyAccount
+    total_issued = db.query(func.sum(LoyaltyAccount.lifetime_earned)).scalar() or 0
+    total_outstanding = db.query(func.sum(LoyaltyAccount.balance)).scalar() or 0
+    return {
+        "total_points_issued": total_issued,
+        "total_points_outstanding": total_outstanding,
+        "estimated_liability_usd": float(total_outstanding) * 0.01,
+    }
