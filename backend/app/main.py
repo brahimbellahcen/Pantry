@@ -82,3 +82,20 @@ except Exception:
 @app.get("/health")
 def health():
     return {"status": "ok", "version": "1.0.0"}
+
+
+@app.get("/health/db")
+def health_db():
+    """Check database connectivity — useful for diagnosing Vercel env var issues."""
+    import os
+    db_url = settings.DATABASE_URL
+    masked = db_url[:30] + "***" if db_url else "NOT SET"
+    try:
+        from sqlalchemy import text
+        from app.database import SessionLocal
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        return {"status": "ok", "db": "connected", "url_prefix": masked}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)[:200], "url_prefix": masked}
