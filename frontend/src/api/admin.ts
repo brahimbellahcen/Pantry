@@ -63,6 +63,20 @@ export const adminApi = {
   // Delivery Slots
   listSlots: () => apiClient.get('/admin/delivery-slots').then(r => r.data),
   createSlot: (data: any) => apiClient.post('/admin/delivery-slots', data).then(r => r.data),
+  // Flash Sales
+  listFlashSales: () => apiClient.get('/admin/flash-sales').then(r => r.data),
+  createFlashSale: (data: any) => apiClient.post('/admin/flash-sales', data).then(r => r.data),
+  endFlashSale: (id: number) => apiClient.delete(`/admin/flash-sales/${id}`),
+
+  // Subscriptions (admin)
+  listSubscriptions: (status = 'active') =>
+    apiClient.get('/subscriptions', { params: { status } }).then(r => r.data),
+  updateSubscriptionStatus: (id: number, status: string) =>
+    apiClient.patch(`/subscriptions/${id}/status`, null, { params: { status } }).then(r => r.data),
+
+  // Loyalty stats
+  getLoyaltyStats: () => apiClient.get('/admin/loyalty/stats').then(r => r.data),
+
   // Returns
   listReturns: (status = 'pending') =>
     apiClient.get('/admin/returns', { params: { status } }).then(r => r.data),

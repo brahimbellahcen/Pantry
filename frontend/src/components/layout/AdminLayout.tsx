@@ -1,6 +1,6 @@
 import { Link, useLocation, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { LayoutDashboard, Package, Tag, ShoppingBag, Users, BarChart2, Ticket, Star, Clock, RotateCcw, FileSpreadsheet } from 'lucide-react'
+import { LayoutDashboard, Package, Tag, ShoppingBag, Users, BarChart2, Ticket, Star, Clock, RotateCcw, FileSpreadsheet, Zap, RefreshCw } from 'lucide-react'
 import { cn } from '@/utils/format'
 
 const nav = [
@@ -9,7 +9,10 @@ const nav = [
   { to: '/admin/categories', label: 'Categories', icon: Tag },
   { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/admin/inventory', label: 'Inventory', icon: BarChart2 },
+  { to: '/admin/flash-sales', label: 'Flash Sales', icon: Zap },
   { to: '/admin/coupons', label: 'Coupons', icon: Ticket },
+  { to: '/admin/subscriptions', label: 'Subscriptions', icon: RefreshCw },
+  { to: '/admin/loyalty', label: 'Loyalty', icon: Star },
   { to: '/admin/reviews', label: 'Reviews', icon: Star },
   { to: '/admin/slots', label: 'Delivery Slots', icon: Clock },
   { to: '/admin/returns', label: 'Returns', icon: RotateCcw },
