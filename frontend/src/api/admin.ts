@@ -57,5 +57,9 @@ export const adminApi = {
   // Delivery Slots
   listSlots: () => apiClient.get('/admin/delivery-slots').then(r => r.data),
   createSlot: (data: any) => apiClient.post('/admin/delivery-slots', data).then(r => r.data),
-  deleteSlot: (id: number) => apiClient.delete(`/admin/delivery-slots/${id}`),
+  // Returns
+  listReturns: (status = 'pending') =>
+    apiClient.get('/admin/returns', { params: { status } }).then(r => r.data),
+  resolveReturn: (id: number, status: string, resolution_note?: string) =>
+    apiClient.patch(`/admin/returns/${id}/resolve`, { status, resolution_note }).then(r => r.data),
 }
