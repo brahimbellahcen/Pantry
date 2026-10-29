@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '@/contexts/CartContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { ordersApi } from '@/api/orders'
+import { slotsApi, type DeliverySlot } from '@/api/slots'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { formatPrice } from '@/utils/format'
+import { formatPrice, formatDate } from '@/utils/format'
 import { toast } from 'react-hot-toast'
+import { Tag } from 'lucide-react'
 
 interface AddressForm {
   line1: string; line2: string; city: string; state: string; postal_code: string; country: string
@@ -19,10 +21,14 @@ export default function Checkout() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [address, setAddress] = useState<AddressForm>(emptyAddr)
-  const [notes, setNotes] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [slots, setSlots] = useState<DeliverySlot[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null)
 
-  const defaultAddr = user?.addresses.find((a) => a.is_default) ?? user?.addresses[0]
+  useEffect(() => { slotsApi.list().then(setSlots).catch(() => {}) }, [])
+  const [notes, setNotes] = useState('')
+
+  const [submitting, setSubmitting] = useState(false) ?? user?.addresses[0]
   const [useDefault, setUseDefault] = useState(!!defaultAddr)
 
   const items = cart?.items ?? []
@@ -35,9 +41,14 @@ export default function Checkout() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const payload = useDefault && defaultAddr
-        ? { shipping_address_id: defaultAddr.id, notes }
-        : { shipping_address: address, notes }
+      const payload = {
+        ...(useDefault && defaultAddr
+          ? { shipping_address_id: defaultAddr.id }
+          : { shipping_address: address }),
+        notes,
+        coupon_code: couponCode || undefined,
+        delivery_slot_id: selectedSlot ?? undefined,
+      }
       const res = await ordersApi.checkout(payload)
       await refresh()
       toast.success('Order placed!')
@@ -81,6 +92,42 @@ export default function Checkout() {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="card p-5">
+            <h2 className="font-bold text-gray-900 mb-3">Delivery Slot (optional)</h2>
+            {slots.length === 0
+              ? <p className="text-sm text-gray-400">No slots available right now.</p>
+              : (
+                <div className="grid grid-cols-2 gap-2">
+                  {slots.map(s => (
+                    <label key={s.id} className={`flex flex-col rounded-lg border p-2.5 cursor-pointer text-sm ${selectedSlot === s.id ? 'border-brand-500 bg-brand-50' : 'border-gray-200'}`}>
+                      <input type="radio" name="slot" value={s.id} checked={selectedSlot === s.id}
+                        onChange={() => setSelectedSlot(s.id)} className="sr-only" />
+                      <span className="font-medium">{formatDate(s.date)}</span>
+                      <span className="text-gray-500">{s.time_window}</span>
+                      <span className="text-xs text-brand-600">{s.available} left</span>
+                    </label>
+                  ))}
+                </div>
+              )
+            }
+          </div>
+
+          <div className="card p-5">
+            <h2 className="font-bold text-gray-900 mb-2">Coupon Code</h2>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder="SAVE10"
+                  className="input pl-9 uppercase"
+                />
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-400">Applied at checkout — discount shown in total.</p>
           </div>
 
           <div className="card p-5">

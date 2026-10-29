@@ -1,25 +1,28 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { AdminLayout } from '@/components/layout/AdminLayout'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useAuth } from '@/contexts/AuthContext'
 import { Spinner } from '@/components/ui/Badge'
 
-import Home from '@/pages/Home'
-import Products from '@/pages/Products'
-import ProductDetail from '@/pages/ProductDetail'
-import Cart from '@/pages/Cart'
-import Checkout from '@/pages/Checkout'
-import OrderHistory from '@/pages/OrderHistory'
-import OrderDetail from '@/pages/OrderDetail'
-import Login from '@/pages/Login'
-import Register from '@/pages/Register'
-
-import AdminDashboard from '@/pages/admin/Dashboard'
-import AdminProducts from '@/pages/admin/Products'
-import AdminCategories from '@/pages/admin/Categories'
-import AdminOrders from '@/pages/admin/Orders'
-import AdminInventory from '@/pages/admin/Inventory'
+const Home = lazy(() => import('@/pages/Home'))
+const Products = lazy(() => import('@/pages/Products'))
+const ProductDetail = lazy(() => import('@/pages/ProductDetail'))
+const Cart = lazy(() => import('@/pages/Cart'))
+const Checkout = lazy(() => import('@/pages/Checkout'))
+const CheckoutSuccess = lazy(() => import('@/pages/CheckoutSuccess'))
+const OrderHistory = lazy(() => import('@/pages/OrderHistory'))
+const OrderDetail = lazy(() => import('@/pages/OrderDetail'))
+const Login = lazy(() => import('@/pages/Login'))
+const Register = lazy(() => import('@/pages/Register'))
+const Wishlist = lazy(() => import('@/pages/Wishlist'))
+const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'))
+const AdminProducts = lazy(() => import('@/pages/admin/Products'))
+const AdminCategories = lazy(() => import('@/pages/admin/Categories'))
+const AdminOrders = lazy(() => import('@/pages/admin/Orders'))
+const AdminInventory = lazy(() => import('@/pages/admin/Inventory'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -32,7 +35,13 @@ function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <ErrorBoundary>
+          <Suspense fallback={<div className="flex justify-center py-20"><Spinner /></div>}>
+            {children}
+          </Suspense>
+        </ErrorBoundary>
+      </main>
       <Footer />
     </div>
   )
@@ -51,8 +60,10 @@ export default function App() {
 
       {/* Authenticated routes */}
       <Route path="/checkout" element={<StorefrontLayout><RequireAuth><Checkout /></RequireAuth></StorefrontLayout>} />
+      <Route path="/checkout/success" element={<StorefrontLayout><CheckoutSuccess /></StorefrontLayout>} />
       <Route path="/account/orders" element={<StorefrontLayout><RequireAuth><OrderHistory /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/orders/:id" element={<StorefrontLayout><RequireAuth><OrderDetail /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/wishlist" element={<StorefrontLayout><RequireAuth><Wishlist /></RequireAuth></StorefrontLayout>} />
 
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
