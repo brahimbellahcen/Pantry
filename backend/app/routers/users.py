@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User, Address
+from app.models.cart import Cart, CartItem
+from app.models.wishlist import WishlistItem
 from app.schemas.user import UserOut, UserUpdate, AddressCreate, AddressOut
 from app.dependencies import get_current_user
 
@@ -59,4 +61,38 @@ def delete_address(
     if not addr or addr.user_id != current_user.id:
         raise HTTPException(404, "Address not found")
     db.delete(addr)
+    db.commit()
+
+
+# ── GDPR — account deletion ───────────────────────────────────────────────────
+
+@router.delete("/me", status_code=204)
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete the authenticated user's account and all associated data.
+    Orders are anonymised (user_id set to NULL) rather than deleted to preserve
+    financial records. All other personal data is removed.
+    """
+    from app.models.order import Order
+    from app.models.review import Review
+    from app.models.wishlist import WishlistItem
+    from app.models.cart import Cart
+    from app.models.password_reset import PasswordResetToken
+
+    # Anonymise orders (keep for accounting)
+    db.query(Order).filter(Order.user_id == current_user.id).update({"user_id": None})
+
+    # Hard-delete everything else
+    for model in [PasswordResetToken, WishlistItem, Review]:
+        db.query(model).filter(model.user_id == current_user.id).delete()
+
+    cart = db.query(Cart).filter(Cart.user_id == current_user.id).first()
+    if cart:
+        db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+        db.delete(cart)
+
+    db.delete(current_user)
     db.commit()
