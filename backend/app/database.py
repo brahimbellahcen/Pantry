@@ -4,13 +4,26 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# Serverless (Vercel) needs NullPool — no persistent connections between requests.
-# Dev uses pool_pre_ping to recover from dropped connections.
 if settings.APP_ENV == "production":
+    # Vercel serverless: use NullPool (no persistent connections) +
+    # Supabase pooler (port 6543) handles connection pooling externally.
     from sqlalchemy.pool import NullPool
-    engine = create_engine(settings.DATABASE_URL, poolclass=NullPool)
+    engine = create_engine(
+        settings.DATABASE_URL,
+        poolclass=NullPool,
+        connect_args={
+            "sslmode": "require",
+            "options": "-c statement_timeout=30000",
+        },
+    )
 else:
-    engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+    # Local dev: use regular pool with pre-ping
+    engine = create_engine(
+        settings.DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
