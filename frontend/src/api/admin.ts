@@ -42,4 +42,20 @@ export const adminApi = {
 
   // Users
   listUsers: () => apiClient.get<User[]>('/admin/users').then((r) => r.data),
+
+  // Coupons
+  listCoupons: () => apiClient.get('/admin/coupons').then(r => r.data),
+  createCoupon: (data: any) => apiClient.post('/admin/coupons', data).then(r => r.data),
+  updateCoupon: (id: number, data: any) => apiClient.patch(`/admin/coupons/${id}`, data).then(r => r.data),
+
+  // Reviews
+  listReviews: (status = 'pending') =>
+    apiClient.get('/admin/reviews', { params: { status } }).then(r => r.data),
+  moderateReview: (id: number, action: string) =>
+    apiClient.patch(`/admin/reviews/${id}/moderate`, null, { params: { action } }).then(r => r.data),
+
+  // Delivery Slots
+  listSlots: () => apiClient.get('/admin/delivery-slots').then(r => r.data),
+  createSlot: (data: any) => apiClient.post('/admin/delivery-slots', data).then(r => r.data),
+  deleteSlot: (id: number) => apiClient.delete(`/admin/delivery-slots/${id}`),
 }
