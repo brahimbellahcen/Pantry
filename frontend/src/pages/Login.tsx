@@ -34,6 +34,10 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="card p-6 space-y-4">
           <Input label="Email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input label="Password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="flex items-center justify-between">
+            <span />
+            <Link to="/forgot-password" className="text-xs text-brand-600 hover:underline">Forgot password?</Link>
+          </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" isLoading={loading} className="w-full">Sign In</Button>
         </form>

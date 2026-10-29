@@ -18,11 +18,15 @@ const OrderDetail = lazy(() => import('@/pages/OrderDetail'))
 const Login = lazy(() => import('@/pages/Login'))
 const Register = lazy(() => import('@/pages/Register'))
 const Wishlist = lazy(() => import('@/pages/Wishlist'))
-const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'))
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
 const AdminProducts = lazy(() => import('@/pages/admin/Products'))
 const AdminCategories = lazy(() => import('@/pages/admin/Categories'))
 const AdminOrders = lazy(() => import('@/pages/admin/Orders'))
 const AdminInventory = lazy(() => import('@/pages/admin/Inventory'))
+const AdminCoupons = lazy(() => import('@/pages/admin/Coupons'))
+const AdminReviews = lazy(() => import('@/pages/admin/Reviews'))
+const AdminSlots = lazy(() => import('@/pages/admin/Slots'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -58,7 +62,8 @@ export default function App() {
       <Route path="/login" element={<StorefrontLayout><Login /></StorefrontLayout>} />
       <Route path="/register" element={<StorefrontLayout><Register /></StorefrontLayout>} />
 
-      {/* Authenticated routes */}
+      <Route path="/forgot-password" element={<StorefrontLayout><ForgotPassword /></StorefrontLayout>} />
+      <Route path="/reset-password" element={<StorefrontLayout><ResetPassword /></StorefrontLayout>} />
       <Route path="/checkout" element={<StorefrontLayout><RequireAuth><Checkout /></RequireAuth></StorefrontLayout>} />
       <Route path="/checkout/success" element={<StorefrontLayout><CheckoutSuccess /></StorefrontLayout>} />
       <Route path="/account/orders" element={<StorefrontLayout><RequireAuth><OrderHistory /></RequireAuth></StorefrontLayout>} />
@@ -71,6 +76,9 @@ export default function App() {
       <Route path="/admin/categories" element={<AdminLayout><AdminCategories /></AdminLayout>} />
       <Route path="/admin/orders" element={<AdminLayout><AdminOrders /></AdminLayout>} />
       <Route path="/admin/inventory" element={<AdminLayout><AdminInventory /></AdminLayout>} />
+      <Route path="/admin/coupons" element={<AdminLayout><AdminCoupons /></AdminLayout>} />
+      <Route path="/admin/reviews" element={<AdminLayout><AdminReviews /></AdminLayout>} />
+      <Route path="/admin/slots" element={<AdminLayout><AdminSlots /></AdminLayout>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
