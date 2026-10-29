@@ -220,6 +220,17 @@ def update_order_status(
         order.payment_status = "paid"
     db.commit()
     db.refresh(order)
+    # Send status email (best-effort)
+    try:
+        from app.services.email import send_order_status_update
+        delivery_date = str(order.estimated_delivery) if order.estimated_delivery else "soon"
+        send_order_status_update(
+            order.user.email, order.order_number, order.status,
+            delivery_date=delivery_date,
+            tracking_ref=order.payment_reference or "N/A",
+        )
+    except Exception:
+        pass
     return order
 
 
@@ -260,3 +271,145 @@ def dashboard_stats(
         "pending_orders": pending_orders,
         "low_stock_products": low_stock,
     }
+
+
+# ── Coupons ───────────────────────────────────────────────────────────────────
+
+from app.models.coupon import Coupon
+from app.schemas.coupon import CouponCreate, CouponUpdate, CouponOut
+
+
+@router.get("/coupons", response_model=list[CouponOut])
+def admin_list_coupons(db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+    return db.query(Coupon).order_by(Coupon.created_at.desc()).all()
+
+
+@router.post("/coupons", response_model=CouponOut, status_code=201)
+def admin_create_coupon(
+    payload: CouponCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if db.query(Coupon).filter(Coupon.code == payload.code.upper()).first():
+        raise HTTPException(400, "Coupon code already exists")
+    coupon = Coupon(**{**payload.model_dump(), "code": payload.code.upper()})
+    db.add(coupon)
+    db.commit()
+    db.refresh(coupon)
+    return coupon
+
+
+@router.patch("/coupons/{coupon_id}", response_model=CouponOut)
+def admin_update_coupon(
+    coupon_id: int,
+    payload: CouponUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    coupon = db.get(Coupon, coupon_id)
+    if not coupon:
+        raise HTTPException(404, "Coupon not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(coupon, field, value)
+    db.commit()
+    db.refresh(coupon)
+    return coupon
+
+
+@router.delete("/coupons/{coupon_id}", status_code=204)
+def admin_delete_coupon(
+    coupon_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    coupon = db.get(Coupon, coupon_id)
+    if not coupon:
+        raise HTTPException(404, "Coupon not found")
+    coupon.is_active = False
+    db.commit()
+
+
+# ── Reviews (moderation) ──────────────────────────────────────────────────────
+
+from app.models.review import Review
+from app.schemas.review import ReviewOut
+
+
+@router.get("/reviews", response_model=list[ReviewOut])
+def admin_list_reviews(
+    status: str = "pending",
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    rows = db.query(Review).filter(Review.status == status).order_by(Review.created_at.desc()).all()
+    return [ReviewOut(
+        id=r.id, product_id=r.product_id, user_id=r.user_id,
+        author_name=r.user.full_name, rating=r.rating, title=r.title,
+        body=r.body, is_verified_purchase=r.is_verified_purchase,
+        status=r.status, created_at=r.created_at,
+    ) for r in rows]
+
+
+@router.patch("/reviews/{review_id}/moderate")
+def moderate_review(
+    review_id: int,
+    action: str,  # "approve" | "reject"
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if action not in ("approve", "reject"):
+        raise HTTPException(400, "action must be 'approve' or 'reject'")
+    review = db.get(Review, review_id)
+    if not review:
+        raise HTTPException(404, "Review not found")
+    review.status = "approved" if action == "approve" else "rejected"
+    db.commit()
+    return {"status": review.status}
+
+
+# ── Delivery Slots ────────────────────────────────────────────────────────────
+
+from app.models.delivery_slot import DeliverySlot
+from app.schemas.delivery_slot import DeliverySlotCreate, DeliverySlotOut
+
+
+@router.get("/delivery-slots", response_model=list[DeliverySlotOut])
+def admin_list_slots(db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+    return [
+        DeliverySlotOut(
+            id=s.id, date=s.date, time_window=s.time_window,
+            capacity=s.capacity, booked_count=s.booked_count,
+            available=s.available, is_active=s.is_active,
+        )
+        for s in db.query(DeliverySlot).order_by(DeliverySlot.date, DeliverySlot.time_window).all()
+    ]
+
+
+@router.post("/delivery-slots", response_model=DeliverySlotOut, status_code=201)
+def admin_create_slot(
+    payload: DeliverySlotCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    slot = DeliverySlot(**payload.model_dump())
+    db.add(slot)
+    db.commit()
+    db.refresh(slot)
+    return DeliverySlotOut(
+        id=slot.id, date=slot.date, time_window=slot.time_window,
+        capacity=slot.capacity, booked_count=slot.booked_count,
+        available=slot.available, is_active=slot.is_active,
+    )
+
+
+@router.delete("/delivery-slots/{slot_id}", status_code=204)
+def admin_delete_slot(
+    slot_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    slot = db.get(DeliverySlot, slot_id)
+    if not slot:
+        raise HTTPException(404, "Slot not found")
+    slot.is_active = False
+    db.commit()
