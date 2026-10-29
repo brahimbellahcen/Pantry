@@ -36,7 +36,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
-    # Cron job protection (set to any random string, then pass as X-Cron-Secret header)
+    # Monitoring
+    SENTRY_DSN: str = ""
+
+    # Cron job protection
     CRON_SECRET: str = ""
 
     @property

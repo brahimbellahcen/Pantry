@@ -1,8 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 from slowapi.errors import RateLimitExceeded
 from slowapi import _rate_limit_exceeded_handler
 
@@ -14,10 +12,24 @@ from app.routers import (
     flash_sales, loyalty, referrals, subscriptions, oauth, jobs, account,
 )
 from app.middleware.security import SecurityHeadersMiddleware, limiter
-from app.utils.logging import configure_logging, log
 
 settings = get_settings()
-configure_logging()
+
+# ── Logging (graceful — don't crash if structlog misconfigures) ───────────────
+try:
+    from app.utils.logging import configure_logging
+    configure_logging()
+except Exception:
+    pass
+
+# ── Sentry (optional) ─────────────────────────────────────────────────────────
+if settings.SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, integrations=[FastApiIntegration()], traces_sample_rate=0.1)
+    except Exception:
+        pass
 
 app = FastAPI(
     title="Pantry API",
@@ -51,12 +63,17 @@ for router in [
 ]:
     app.include_router(router, prefix=PREFIX)
 
-# Serve uploaded images in local-fallback mode
-uploads_dir = Path("uploads")
-uploads_dir.mkdir(exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+# ── Static uploads (local dev only — skipped on Vercel read-only FS) ─────────
+try:
+    from pathlib import Path
+    from fastapi.staticfiles import StaticFiles
+    uploads_dir = Path("uploads")
+    uploads_dir.mkdir(exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+except Exception:
+    pass   # Vercel / read-only filesystem — images go to Cloudinary
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "1.0.0"}
