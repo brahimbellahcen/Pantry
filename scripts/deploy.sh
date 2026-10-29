@@ -119,6 +119,11 @@ fi
 step "3/7  Cloudinary — free image storage (25 GB)"
 
 CLOUDINARY_CLOUD_NAME=$(load_state CLOUDINARY_CLOUD_NAME)
+# Pre-fill known cloud name so the script skips this prompt
+if [[ -z "$CLOUDINARY_CLOUD_NAME" ]]; then
+  CLOUDINARY_CLOUD_NAME="ogpzj1z"
+  save_state CLOUDINARY_CLOUD_NAME "$CLOUDINARY_CLOUD_NAME"
+fi
 
 if [[ -z "$CLOUDINARY_CLOUD_NAME" ]]; then
   echo

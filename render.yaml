@@ -28,7 +28,7 @@ services:
         value: "Pantry <onboarding@resend.dev>"
       # Cloudinary — free image storage
       - key: CLOUDINARY_CLOUD_NAME
-        sync: false
+        value: ogpzj1z
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
