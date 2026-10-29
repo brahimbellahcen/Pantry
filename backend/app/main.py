@@ -10,6 +10,7 @@ from app.routers import (
     reviews, wishlist, delivery_slots, coupons,
     returns, recommendations, autocomplete, csv_import,
     flash_sales, loyalty, referrals, subscriptions, oauth, jobs, account,
+    seo, admin_search,
 )
 from app.middleware.security import SecurityHeadersMiddleware, limiter
 
@@ -60,8 +61,12 @@ for router in [
     recommendations.router, autocomplete.router, csv_import.router,
     flash_sales.router, loyalty.router, referrals.router,
     subscriptions.router, oauth.router, jobs.router, account.router,
+    admin_search.router,
 ]:
     app.include_router(router, prefix=PREFIX)
+
+# SEO routes at root — no /api/v1 prefix
+app.include_router(seo.router)
 
 # ── Static uploads (local dev only — skipped on Vercel read-only FS) ─────────
 try:

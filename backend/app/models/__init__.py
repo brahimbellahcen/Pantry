@@ -11,6 +11,7 @@ from app.models.delivery_slot import DeliverySlot  # noqa
 from app.models.wishlist import WishlistItem  # noqa
 from app.models.password_reset import PasswordResetToken  # noqa
 from app.models.return_request import ReturnRequest  # noqa
+from app.models.user_settings import UserSettings, RecentlyViewed  # noqa
 from app.models.flash_sale import FlashSale  # noqa
 from app.models.loyalty import LoyaltyAccount, LoyaltyTransaction  # noqa
 from app.models.subscription import Subscription, SubscriptionItem  # noqa

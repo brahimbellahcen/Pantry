@@ -675,3 +675,49 @@ def loyalty_stats(
         "total_points_outstanding": total_outstanding,
         "estimated_liability_usd": float(total_outstanding) * 0.01,
     }
+
+
+# ── CSV Export ────────────────────────────────────────────────────────────────
+
+@router.get("/export/orders")
+def export_orders_csv(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Download all orders as CSV."""
+    import csv, io
+    from fastapi.responses import StreamingResponse
+
+    orders = db.query(Order).options(joinedload(Order.items)).order_by(Order.created_at.desc()).all()
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["order_number", "status", "payment_status", "subtotal", "tax",
+                "shipping", "discount", "total", "items", "created_at"])
+    for o in orders:
+        w.writerow([o.order_number, o.status, o.payment_status,
+                    float(o.subtotal), float(o.tax_amount), float(o.shipping_amount),
+                    float(o.discount_amount), float(o.total),
+                    len(o.items), str(o.created_at)[:19]])
+    out.seek(0)
+    return StreamingResponse(iter([out.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=pantry_orders.csv"})
+
+
+@router.get("/export/customers")
+def export_customers_csv(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Download all customers as CSV."""
+    import csv, io
+    from fastapi.responses import StreamingResponse
+
+    users = db.query(User).filter(User.is_admin == False).order_by(User.created_at.desc()).all()
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["id", "email", "full_name", "phone", "is_active", "created_at"])
+    for u in users:
+        w.writerow([u.id, u.email, u.full_name, u.phone or "", u.is_active, str(u.created_at)[:19]])
+    out.seek(0)
+    return StreamingResponse(iter([out.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=pantry_customers.csv"})

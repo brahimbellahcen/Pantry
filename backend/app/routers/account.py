@@ -1,14 +1,26 @@
-"""Invoice download + notification preferences + recently viewed."""
+"""Account endpoints — invoice, notification prefs (DB-backed), recently viewed (DB-backed)."""
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from app.database import get_db
 from app.models.order import Order
+from app.models.product import Product
 from app.models.user import User
+from app.models.user_settings import UserSettings, RecentlyViewed
 from app.dependencies import get_current_user
+from app.routers.products import _to_list_out
+from app.schemas.product import ProductListOut
 
 router = APIRouter(prefix="/account", tags=["account"])
+
+DEFAULT_PREFS = {
+    "order_updates": True,
+    "promotional": True,
+    "low_stock_alerts": False,
+    "weekly_digest": False,
+}
 
 
 # ── PDF Invoice ───────────────────────────────────────────────────────────────
@@ -36,7 +48,7 @@ def download_invoice(
     )
 
 
-# ── Notification Preferences ──────────────────────────────────────────────────
+# ── Notification Preferences (DB-backed) ──────────────────────────────────────
 
 class NotificationPrefs(BaseModel):
     order_updates: bool = True
@@ -45,33 +57,37 @@ class NotificationPrefs(BaseModel):
     weekly_digest: bool = False
 
 
-# Store in user's metadata (simple JSON approach — extend with a DB table if needed)
-_prefs_store: dict[int, dict] = {}   # in-memory; replace with DB for production
+def _get_or_create_settings(user_id: int, db: Session) -> UserSettings:
+    s = db.query(UserSettings).filter_by(user_id=user_id).first()
+    if not s:
+        s = UserSettings(user_id=user_id, notification_prefs=DEFAULT_PREFS.copy())
+        db.add(s); db.flush()
+    return s
 
 
 @router.get("/notifications", response_model=NotificationPrefs)
-def get_notification_prefs(current_user: User = Depends(get_current_user)):
-    prefs = _prefs_store.get(current_user.id, {})
-    return NotificationPrefs(**prefs)
+def get_notification_prefs(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    settings = _get_or_create_settings(current_user.id, db)
+    db.commit()
+    return NotificationPrefs(**{**DEFAULT_PREFS, **settings.notification_prefs})
 
 
 @router.put("/notifications", response_model=NotificationPrefs)
 def update_notification_prefs(
     payload: NotificationPrefs,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    _prefs_store[current_user.id] = payload.model_dump()
+    settings = _get_or_create_settings(current_user.id, db)
+    settings.notification_prefs = payload.model_dump()
+    db.commit()
     return payload
 
 
-# ── Recently Viewed ───────────────────────────────────────────────────────────
-
-from app.models.product import Product
-from app.schemas.product import ProductListOut
-from app.routers.products import _to_list_out
-
-_recently_viewed: dict[int, list[int]] = {}   # user_id → [product_id, ...]
-
+# ── Recently Viewed (DB-backed) ───────────────────────────────────────────────
 
 @router.post("/viewed/{product_id}", status_code=204)
 def track_viewed(
@@ -81,11 +97,22 @@ def track_viewed(
 ):
     if not db.get(Product, product_id):
         raise HTTPException(404, "Product not found")
-    seen = _recently_viewed.setdefault(current_user.id, [])
-    if product_id in seen:
-        seen.remove(product_id)
-    seen.insert(0, product_id)
-    _recently_viewed[current_user.id] = seen[:20]   # keep last 20
+
+    existing = db.query(RecentlyViewed).filter_by(
+        user_id=current_user.id, product_id=product_id
+    ).first()
+    if existing:
+        existing.viewed_at = datetime.now(timezone.utc)
+    else:
+        # Keep max 20 — delete oldest if needed
+        count = db.query(RecentlyViewed).filter_by(user_id=current_user.id).count()
+        if count >= 20:
+            oldest = db.query(RecentlyViewed).filter_by(user_id=current_user.id)\
+                .order_by(RecentlyViewed.viewed_at.asc()).first()
+            if oldest:
+                db.delete(oldest)
+        db.add(RecentlyViewed(user_id=current_user.id, product_id=product_id))
+    db.commit()
 
 
 @router.get("/viewed", response_model=list[ProductListOut])
@@ -93,16 +120,16 @@ def get_recently_viewed(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    ids = _recently_viewed.get(current_user.id, [])
-    if not ids:
-        return []
-    from sqlalchemy.orm import joinedload as jl
-    products = (
-        db.query(Product)
-        .options(jl(Product.category), jl(Product.inventory), jl(Product.flash_sales))
-        .filter(Product.id.in_(ids), Product.is_active == True)
+    rows = (
+        db.query(RecentlyViewed)
+        .options(
+            joinedload(RecentlyViewed.product).joinedload(Product.category),
+            joinedload(RecentlyViewed.product).joinedload(Product.inventory),
+            joinedload(RecentlyViewed.product).joinedload(Product.flash_sales),
+        )
+        .filter(RecentlyViewed.user_id == current_user.id)
+        .order_by(RecentlyViewed.viewed_at.desc())
+        .limit(20)
         .all()
     )
-    # Preserve view order
-    prod_map = {p.id: p for p in products}
-    return [_to_list_out(prod_map[i]) for i in ids if i in prod_map]
+    return [_to_list_out(r.product) for r in rows if r.product and r.product.is_active]
