@@ -9,3 +9,4 @@ from app.models.review import Review  # noqa
 from app.models.delivery_slot import DeliverySlot  # noqa
 from app.models.wishlist import WishlistItem  # noqa
 from app.models.password_reset import PasswordResetToken  # noqa
+from app.models.return_request import ReturnRequest  # noqa
