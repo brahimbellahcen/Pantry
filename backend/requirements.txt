@@ -19,3 +19,4 @@ slowapi==0.1.9
 structlog==24.2.0
 resend==2.3.0
 cloudinary==1.40.0
+fpdf2==2.7.9
