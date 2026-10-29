@@ -24,12 +24,14 @@ class OrderItemOut(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    shipping_address_id: int | None = None  # use saved address
-    shipping_address: AddressSnapshotIn | None = None  # or inline
+    shipping_address_id: int | None = None
+    shipping_address: AddressSnapshotIn | None = None
     billing_same_as_shipping: bool = True
     billing_address: AddressSnapshotIn | None = None
     notes: str | None = None
-    payment_method: str = "stripe"  # configurable
+    payment_method: str = "stripe"
+    coupon_code: str | None = None
+    delivery_slot_id: int | None = None
 
 
 class OrderStatusUpdate(BaseModel):
@@ -69,8 +71,9 @@ class OrderListOut(BaseModel):
 
 class CheckoutResponse(BaseModel):
     order: OrderOut
-    payment_url: str | None = None   # Stripe checkout URL (if applicable)
-    client_secret: str | None = None  # Stripe PaymentIntent client_secret
+    payment_url: str | None = None
+    client_secret: str | None = None
+    stripe_session_url: str | None = None  # hosted Stripe Checkout URL
 
 
 class OrderPage(BaseModel):

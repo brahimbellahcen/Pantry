@@ -8,6 +8,8 @@ from app.database import get_db
 from app.models.cart import Cart, CartItem
 from app.models.order import Order, OrderItem
 from app.models.product import Inventory, Product
+from app.models.delivery_slot import DeliverySlot
+from app.services.coupon import get_coupon_or_404, validate_coupon, calculate_discount, redeem_coupon
 from app.models.user import User, Address
 from app.schemas.order import OrderCreate, OrderOut, OrderListOut, OrderPage, CheckoutResponse
 from app.dependencies import get_current_user, Paginator
@@ -81,7 +83,27 @@ def checkout(
 
     tax_amount = round(subtotal * TAX_RATE, 2)
     shipping_amount = 0.0 if subtotal >= SHIPPING_FREE_THRESHOLD else 5.99
-    total = subtotal + tax_amount + shipping_amount
+
+    # Apply coupon
+    from decimal import Decimal
+    discount_amount = Decimal("0")
+    coupon = None
+    if payload.coupon_code:
+        coupon = get_coupon_or_404(payload.coupon_code, db)
+        validate_coupon(coupon, Decimal(str(round(subtotal, 2))))
+        discount_amount = calculate_discount(coupon, Decimal(str(round(subtotal, 2))))
+
+    total = subtotal + tax_amount + shipping_amount - float(discount_amount)
+
+    # Validate delivery slot
+    delivery_slot_id = None
+    if payload.delivery_slot_id:
+        slot = db.get(DeliverySlot, payload.delivery_slot_id)
+        if not slot or not slot.is_active:
+            raise HTTPException(400, "Delivery slot not available")
+        if slot.available <= 0:
+            raise HTTPException(400, "Delivery slot is fully booked")
+        delivery_slot_id = slot.id
 
     shipping_addr = _resolve_address(payload, current_user, db)
     billing_addr = shipping_addr if payload.billing_same_as_shipping else (
@@ -95,12 +117,14 @@ def checkout(
         subtotal=round(subtotal, 2),
         tax_amount=tax_amount,
         shipping_amount=shipping_amount,
+        discount_amount=float(discount_amount),
         total=round(total, 2),
         shipping_address=shipping_addr,
         billing_address=billing_addr,
         notes=payload.notes,
         payment_status="unpaid",
         estimated_delivery=date.today() + timedelta(days=3),
+        delivery_slot_id=delivery_slot_id,
     )
     db.add(order)
     db.flush()  # get order.id
@@ -114,6 +138,16 @@ def checkout(
         if inv and inv.track_inventory:
             inv.quantity = max(0, inv.quantity - ci.quantity)
 
+    # Redeem coupon
+    if coupon:
+        redeem_coupon(coupon, db)
+
+    # Book delivery slot
+    if delivery_slot_id:
+        slot = db.get(DeliverySlot, delivery_slot_id)
+        if slot:
+            slot.booked_count += 1
+
     # Clear cart
     db.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
     db.commit()
@@ -121,18 +155,33 @@ def checkout(
 
     # Initiate payment
     payment_response = {}
-    if payload.payment_method == "stripe" and settings.STRIPE_SECRET_KEY:
+    stripe_session_url = None
+    if settings.STRIPE_SECRET_KEY:
         try:
-            payment_response = payment_svc.create_payment_intent(
-                order.total,
-                metadata={"order_id": order.id, "order_number": order.order_number},
-            )
-            order.payment_provider = "stripe"
-            order.payment_reference = payment_response.get("payment_intent_id")
+            from app.config import get_settings as _s
+            cfg = _s()
+            if payload.payment_method == "stripe_checkout":
+                payment_response = payment_svc.create_checkout_session(
+                    order.total,
+                    order.order_number,
+                    order.id,
+                    success_url=f"{cfg.APP_CORS_ORIGINS.split(',')[0]}/checkout/success?order={order.id}",
+                    cancel_url=f"{cfg.APP_CORS_ORIGINS.split(',')[0]}/cart",
+                )
+                stripe_session_url = payment_response.get("session_url")
+                order.payment_provider = "stripe_checkout"
+                order.payment_reference = payment_response.get("session_id")
+            else:
+                payment_response = payment_svc.create_payment_intent(
+                    order.total,
+                    metadata={"order_id": order.id, "order_number": order.order_number},
+                )
+                order.payment_provider = "stripe"
+                order.payment_reference = payment_response.get("payment_intent_id")
             db.commit()
             db.refresh(order)
         except Exception:
-            pass  # payment can be retried; order is still created
+            pass
 
     # Send confirmation email (best-effort)
     try:
@@ -143,6 +192,7 @@ def checkout(
     return CheckoutResponse(
         order=order,
         client_secret=payment_response.get("client_secret"),
+        stripe_session_url=stripe_session_url,
     )
 
 
