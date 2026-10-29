@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { AdminLayout } from '@/components/layout/AdminLayout'
+import { MobileNav } from '@/components/layout/MobileNav'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { useAuth } from '@/contexts/AuthContext'
 import { Spinner } from '@/components/ui/Badge'
@@ -56,7 +57,7 @@ function StorefrontLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 pb-16 md:pb-0">
         <ErrorBoundary>
           <Suspense fallback={<div className="flex justify-center py-20"><Spinner /></div>}>
             {children}
@@ -64,6 +65,7 @@ function StorefrontLayout({ children }: { children: React.ReactNode }) {
         </ErrorBoundary>
       </main>
       <Footer />
+      <MobileNav />
     </div>
   )
 }

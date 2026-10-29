@@ -3,10 +3,11 @@ import { adminApi } from '@/api/admin'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Spinner } from '@/components/ui/Badge'
+import { ImageUpload } from '@/components/ui/ImageUpload'
 import { formatPrice } from '@/utils/format'
 import { toast } from 'react-hot-toast'
 import type { Product, Category } from '@/types'
-import { Plus, Pencil, Trash2, PackageX } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([])
@@ -62,7 +63,11 @@ export default function AdminProducts() {
             </div>
             <Input label="Price ($)" type="number" step="0.01" required value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} />
             {!editing && <Input label="Initial stock" type="number" value={form.initial_stock} onChange={e => setForm(f => ({ ...f, initial_stock: e.target.value }))} />}
-            <Input label="Image URL" type="url" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+            <ImageUpload
+              label="Product Image"
+              value={form.image_url}
+              onChange={url => setForm(f => ({ ...f, image_url: url }))}
+            />
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} /> Active</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.is_featured} onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))} /> Featured</label>
