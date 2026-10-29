@@ -1,0 +1,262 @@
+"""Admin router — all endpoints require is_admin."""
+import math
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
+from slugify import slugify
+from app.database import get_db
+from app.models.product import Product, Inventory
+from app.models.category import Category
+from app.models.order import Order
+from app.models.user import User
+from app.schemas.product import ProductCreate, ProductOut, ProductUpdate, InventoryUpdate
+from app.schemas.category import CategoryCreate, CategoryOut, CategoryUpdate
+from app.schemas.order import OrderOut, OrderStatusUpdate, OrderPage
+from app.schemas.user import UserOut
+from app.dependencies import require_admin, Paginator
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+VALID_ORDER_STATUSES = {"pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"}
+
+
+# ── Products ──────────────────────────────────────────────────────────────────
+
+@router.get("/products", response_model=list[ProductOut])
+def admin_list_products(
+    include_inactive: bool = False,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    q = db.query(Product).options(joinedload(Product.category), joinedload(Product.inventory))
+    if not include_inactive:
+        q = q.filter(Product.is_active == True)
+    return q.order_by(Product.name).all()
+
+
+@router.post("/products", response_model=ProductOut, status_code=201)
+def create_product(
+    payload: ProductCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if not db.get(Category, payload.category_id):
+        raise HTTPException(400, "Category not found")
+    slug = payload.slug or slugify(payload.name)
+    if db.query(Product).filter(Product.slug == slug).first():
+        slug = f"{slug}-{Product.id}"  # disambiguate
+    product = Product(
+        **payload.model_dump(exclude={"slug", "initial_stock"}),
+        slug=slug,
+    )
+    db.add(product)
+    db.flush()
+    db.add(Inventory(product_id=product.id, quantity=payload.initial_stock))
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.patch("/products/{product_id}", response_model=ProductOut)
+def update_product(
+    product_id: int,
+    payload: ProductUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(404, "Product not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(product, field, value)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@router.delete("/products/{product_id}", status_code=204)
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    product = db.get(Product, product_id)
+    if not product:
+        raise HTTPException(404, "Product not found")
+    product.is_active = False  # soft delete
+    db.commit()
+
+
+@router.patch("/products/{product_id}/inventory", response_model=dict)
+def update_inventory(
+    product_id: int,
+    payload: InventoryUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    inv = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+    if not inv:
+        raise HTTPException(404, "Inventory record not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(inv, field, value)
+    db.commit()
+    return {"quantity": inv.quantity, "low_stock_threshold": inv.low_stock_threshold}
+
+
+# ── Categories ────────────────────────────────────────────────────────────────
+
+@router.get("/categories", response_model=list[CategoryOut])
+def admin_list_categories(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    return db.query(Category).order_by(Category.sort_order).all()
+
+
+@router.post("/categories", response_model=CategoryOut, status_code=201)
+def create_category(
+    payload: CategoryCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    slug = payload.slug or slugify(payload.name)
+    if db.query(Category).filter(Category.slug == slug).first():
+        raise HTTPException(400, f"Slug '{slug}' already exists")
+    cat = Category(**payload.model_dump(exclude={"slug"}), slug=slug)
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
+@router.patch("/categories/{category_id}", response_model=CategoryOut)
+def update_category(
+    category_id: int,
+    payload: CategoryUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    cat = db.get(Category, category_id)
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(cat, field, value)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+def delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    cat = db.get(Category, category_id)
+    if not cat:
+        raise HTTPException(404, "Category not found")
+    cat.is_active = False
+    db.commit()
+
+
+# ── Orders ────────────────────────────────────────────────────────────────────
+
+@router.get("/orders", response_model=OrderPage)
+def admin_list_orders(
+    status: str | None = None,
+    pager: Paginator = Depends(),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    q = db.query(Order).options(joinedload(Order.items))
+    if status:
+        q = q.filter(Order.status == status)
+    total = q.count()
+    items = q.order_by(Order.created_at.desc()).offset(pager.offset).limit(pager.page_size).all()
+    from app.schemas.order import OrderListOut
+    out_items = [
+        OrderListOut(
+            id=o.id,
+            order_number=o.order_number,
+            status=o.status,
+            payment_status=o.payment_status,
+            total=o.total,
+            created_at=o.created_at,
+            item_count=len(o.items),
+        )
+        for o in items
+    ]
+    pages = max(1, math.ceil(total / pager.page_size))
+    return OrderPage(items=out_items, total=total, page=pager.page, page_size=pager.page_size, pages=pages)
+
+
+@router.get("/orders/{order_id}", response_model=OrderOut)
+def admin_get_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+    return order
+
+
+@router.patch("/orders/{order_id}/status", response_model=OrderOut)
+def update_order_status(
+    order_id: int,
+    payload: OrderStatusUpdate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    if payload.status not in VALID_ORDER_STATUSES:
+        raise HTTPException(400, f"Invalid status. Must be one of: {', '.join(VALID_ORDER_STATUSES)}")
+    order = db.query(Order).options(joinedload(Order.items)).filter(Order.id == order_id).first()
+    if not order:
+        raise HTTPException(404, "Order not found")
+    order.status = payload.status
+    if payload.status == "delivered":
+        from datetime import datetime, timezone
+        order.delivered_at = datetime.now(timezone.utc)
+        order.payment_status = "paid"
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+@router.get("/users", response_model=list[UserOut])
+def admin_list_users(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    return db.query(User).order_by(User.created_at.desc()).all()
+
+
+# ── Dashboard stats ───────────────────────────────────────────────────────────
+
+@router.get("/stats")
+def dashboard_stats(
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    from sqlalchemy import func
+    total_orders = db.query(func.count(Order.id)).scalar()
+    total_revenue = db.query(func.sum(Order.total)).filter(Order.payment_status == "paid").scalar() or 0
+    total_products = db.query(func.count(Product.id)).filter(Product.is_active == True).scalar()
+    total_users = db.query(func.count(User.id)).filter(User.is_admin == False).scalar()
+    pending_orders = db.query(func.count(Order.id)).filter(Order.status == "pending").scalar()
+    from app.models.product import Inventory
+    low_stock = (
+        db.query(func.count(Inventory.id))
+        .filter(Inventory.track_inventory == True, Inventory.quantity <= Inventory.low_stock_threshold)
+        .scalar()
+    )
+    return {
+        "total_orders": total_orders,
+        "total_revenue": float(total_revenue),
+        "total_products": total_products,
+        "total_customers": total_users,
+        "pending_orders": pending_orders,
+        "low_stock_products": low_stock,
+    }
