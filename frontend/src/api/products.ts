@@ -7,6 +7,7 @@ export interface ProductFilters {
   featured?: boolean
   min_price?: number
   max_price?: number
+  sort?: string
   page?: number
   page_size?: number
 }

@@ -15,18 +15,18 @@ export default function Products() {
   const q = searchParams.get('q') ?? ''
   const category = searchParams.get('category') ?? ''
   const featured = searchParams.get('featured') === 'true' ? true : undefined
+  const sort = searchParams.get('sort') ?? ''
+
   const page = Number(searchParams.get('page') ?? 1)
 
   const [searchInput, setSearchInput] = useState(q)
 
-  useEffect(() => { productsApi.listCategories().then(setCategories) }, [])
-
   const load = useCallback(() => {
     setLoading(true)
-    productsApi.list({ q: q || undefined, category: category || undefined, featured, page, page_size: 20 })
+    productsApi.list({ q: q || undefined, category: category || undefined, featured, page, page_size: 20, sort: sort || undefined })
       .then(setData)
       .finally(() => setLoading(false))
-  }, [q, category, featured, page])
+  }, [q, category, featured, page, sort])
 
   useEffect(() => { load() }, [load])
 
@@ -82,6 +82,16 @@ export default function Products() {
                 className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-4 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               />
             </div>
+            <select
+              value={sort}
+              onChange={e => setParam('sort', e.target.value || undefined)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            >
+              <option value="">Sort: Relevance</option>
+              <option value="price_asc">Price: Low → High</option>
+              <option value="price_desc">Price: High → Low</option>
+              <option value="newest">Newest first</option>
+            </select>
             <Button type="submit" variant="primary" size="md">Search</Button>
           </form>
 

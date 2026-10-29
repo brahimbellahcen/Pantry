@@ -53,9 +53,9 @@ export function Header() {
               {user?.is_admin && (
                 <Link to="/admin" className="text-xs font-medium text-brand-700 hover:underline">Admin</Link>
               )}
-              <Link to="/account/orders" className="text-sm text-gray-700 hover:text-brand-700">
-                <User className="h-5 w-5" />
-              </Link>
+              <Link to="/account/orders" className="text-sm text-gray-700 hover:text-brand-700">Orders</Link>
+              <Link to="/account/wishlist" className="text-sm text-gray-700 hover:text-brand-700">Wishlist</Link>
+              <Link to="/account/profile" className="text-sm text-gray-700 hover:text-brand-700">Profile</Link>
               <button onClick={logout} className="text-xs text-gray-500 hover:text-gray-700">Sign out</button>
             </div>
           ) : (

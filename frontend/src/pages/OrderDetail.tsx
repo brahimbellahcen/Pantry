@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ordersApi } from '@/api/orders'
 import { Spinner } from '@/components/ui/Badge'
 import { Badge } from '@/components/ui/Badge'
+import { OrderTimeline } from '@/components/order/OrderTimeline'
 import { formatPrice, formatDate, orderStatusLabel, orderStatusColor } from '@/utils/format'
 import type { Order } from '@/types'
 import { ChevronLeft } from 'lucide-react'
@@ -30,6 +31,11 @@ export default function OrderDetail() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900">{order.order_number}</h1>
         <Badge label={orderStatusLabel(order.status)} className={orderStatusColor(order.status)} />
+      </div>
+
+      {/* Order Timeline */}
+      <div className="card p-5 mb-4">
+        <OrderTimeline status={order.status} />
       </div>
 
       <div className="card p-5 mb-4 space-y-2 text-sm">

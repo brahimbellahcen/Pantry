@@ -18,6 +18,7 @@ const OrderDetail = lazy(() => import('@/pages/OrderDetail'))
 const Login = lazy(() => import('@/pages/Login'))
 const Register = lazy(() => import('@/pages/Register'))
 const Wishlist = lazy(() => import('@/pages/Wishlist'))
+const AccountProfile = lazy(() => import('@/pages/AccountProfile'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
 const AdminProducts = lazy(() => import('@/pages/admin/Products'))
@@ -27,6 +28,7 @@ const AdminInventory = lazy(() => import('@/pages/admin/Inventory'))
 const AdminCoupons = lazy(() => import('@/pages/admin/Coupons'))
 const AdminReviews = lazy(() => import('@/pages/admin/Reviews'))
 const AdminSlots = lazy(() => import('@/pages/admin/Slots'))
+const AdminUsers = lazy(() => import('@/pages/admin/Users'))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -69,6 +71,7 @@ export default function App() {
       <Route path="/account/orders" element={<StorefrontLayout><RequireAuth><OrderHistory /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/orders/:id" element={<StorefrontLayout><RequireAuth><OrderDetail /></RequireAuth></StorefrontLayout>} />
       <Route path="/account/wishlist" element={<StorefrontLayout><RequireAuth><Wishlist /></RequireAuth></StorefrontLayout>} />
+      <Route path="/account/profile" element={<StorefrontLayout><RequireAuth><AccountProfile /></RequireAuth></StorefrontLayout>} />
 
       {/* Admin */}
       <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
@@ -79,6 +82,7 @@ export default function App() {
       <Route path="/admin/coupons" element={<AdminLayout><AdminCoupons /></AdminLayout>} />
       <Route path="/admin/reviews" element={<AdminLayout><AdminReviews /></AdminLayout>} />
       <Route path="/admin/slots" element={<AdminLayout><AdminSlots /></AdminLayout>} />
+      <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
