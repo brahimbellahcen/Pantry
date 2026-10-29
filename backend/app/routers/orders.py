@@ -2,7 +2,7 @@ import math
 import random
 import string
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models.cart import Cart, CartItem
@@ -14,7 +14,7 @@ from app.models.user import User, Address
 from app.schemas.order import OrderCreate, OrderOut, OrderListOut, OrderPage, CheckoutResponse
 from app.dependencies import get_current_user, Paginator
 from app.services import payment as payment_svc
-from app.services import email as email_svc
+from app.services.background import enqueue_order_confirmation
 from app.config import get_settings
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -47,6 +47,7 @@ def _resolve_address(payload: OrderCreate, user: User, db: Session) -> dict:
 @router.post("/checkout", response_model=CheckoutResponse, status_code=201)
 def checkout(
     payload: OrderCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -183,11 +184,8 @@ def checkout(
         except Exception:
             pass
 
-    # Send confirmation email (best-effort)
-    try:
-        email_svc.send_order_confirmation(current_user.email, order.order_number, f"${order.total:.2f}")
-    except Exception:
-        pass
+    # Send confirmation email via background task (non-blocking)
+    enqueue_order_confirmation(background_tasks, current_user.email, order.order_number, f"${order.total:.2f}")
 
     return CheckoutResponse(
         order=order,

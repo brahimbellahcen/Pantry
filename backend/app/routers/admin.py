@@ -1,6 +1,6 @@
 """Admin router — all endpoints require is_admin."""
 import math
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.orm import Session, joinedload
 from slugify import slugify
 from app.database import get_db
@@ -205,6 +205,7 @@ def admin_get_order(
 def update_order_status(
     order_id: int,
     payload: OrderStatusUpdate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
@@ -220,17 +221,14 @@ def update_order_status(
         order.payment_status = "paid"
     db.commit()
     db.refresh(order)
-    # Send status email (best-effort)
-    try:
-        from app.services.email import send_order_status_update
-        delivery_date = str(order.estimated_delivery) if order.estimated_delivery else "soon"
-        send_order_status_update(
-            order.user.email, order.order_number, order.status,
-            delivery_date=delivery_date,
-            tracking_ref=order.payment_reference or "N/A",
-        )
-    except Exception:
-        pass
+    # Non-blocking email via background task
+    from app.services.background import enqueue_status_update
+    delivery_date = str(order.estimated_delivery) if order.estimated_delivery else "soon"
+    enqueue_status_update(
+        background_tasks, order.user.email, order.order_number,
+        order.status, delivery_date=delivery_date,
+        tracking_ref=order.payment_reference or "N/A",
+    )
     return order
 
 
