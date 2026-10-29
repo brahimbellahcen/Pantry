@@ -15,12 +15,10 @@ from app.schemas.order import OrderCreate, OrderOut, OrderListOut, OrderPage, Ch
 from app.dependencies import get_current_user, Paginator
 from app.services import payment as payment_svc
 from app.services.background import enqueue_order_confirmation
-from app.config import get_settings
 
 router = APIRouter(prefix="/orders", tags=["orders"])
-settings = get_settings()
 
-TAX_RATE = 0.08  # 8% — make configurable per region as needed
+TAX_RATE = 0.08
 SHIPPING_FREE_THRESHOLD = 50
 
 
@@ -154,43 +152,23 @@ def checkout(
     db.commit()
     db.refresh(order)
 
-    # Initiate payment
-    payment_response = {}
-    stripe_session_url = None
-    if settings.STRIPE_SECRET_KEY:
-        try:
-            from app.config import get_settings as _s
-            cfg = _s()
-            if payload.payment_method == "stripe_checkout":
-                payment_response = payment_svc.create_checkout_session(
-                    order.total,
-                    order.order_number,
-                    order.id,
-                    success_url=f"{cfg.APP_CORS_ORIGINS.split(',')[0]}/checkout/success?order={order.id}",
-                    cancel_url=f"{cfg.APP_CORS_ORIGINS.split(',')[0]}/cart",
-                )
-                stripe_session_url = payment_response.get("session_url")
-                order.payment_provider = "stripe_checkout"
-                order.payment_reference = payment_response.get("session_id")
-            else:
-                payment_response = payment_svc.create_payment_intent(
-                    order.total,
-                    metadata={"order_id": order.id, "order_number": order.order_number},
-                )
-                order.payment_provider = "stripe"
-                order.payment_reference = payment_response.get("payment_intent_id")
-            db.commit()
-            db.refresh(order)
-        except Exception:
-            pass
+    # Process payment (COD/bank transfer work with no keys)
+    payment_info = payment_svc.process_payment(
+        method=payload.payment_method,
+        amount=order.total,
+        order_number=order.order_number,
+        order_id=order.id,
+    )
+    order.payment_provider = payment_info["method"]
+    db.commit()
+    db.refresh(order)
 
     # Send confirmation email via background task (non-blocking)
     enqueue_order_confirmation(background_tasks, current_user.email, order.order_number, f"${order.total:.2f}")
 
     return CheckoutResponse(
         order=order,
-        client_secret=payment_response.get("client_secret"),
-        stripe_session_url=stripe_session_url,
+        payment_url=payment_info.get("redirect_url"),
     )
 
 

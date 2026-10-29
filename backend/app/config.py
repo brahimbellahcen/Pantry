@@ -17,26 +17,18 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # Stripe
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
+    # ── Free-tier integrations ────────────────────────────────────────────
 
-    # Email
-    SMTP_HOST: str = "localhost"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
-    EMAIL_FROM: str = "Pantry <no-reply@example.com>"
+    # Resend — free tier: 3 000 emails/month, no credit card
+    # Sign up at https://resend.com  →  API Keys  →  Create API Key
+    RESEND_API_KEY: str = ""          # re_xxxxxxxxxxxx
+    EMAIL_FROM: str = "Pantry <onboarding@resend.dev>"  # verified domain or resend.dev sandbox
 
-    # Monitoring
-    SENTRY_DSN: str = ""
-
-    # Storage
-    S3_BUCKET: str = ""
-    S3_REGION: str = ""
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    S3_ENDPOINT_URL: str = ""  # for R2, MinIO, Spaces
+    # Cloudinary — free tier: 25 GB storage, 25 GB bandwidth/month
+    # Sign up at https://cloudinary.com  →  Dashboard  →  copy credentials
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
 
     @property
     def cors_origins(self) -> list[str]:

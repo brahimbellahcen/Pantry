@@ -1,11 +1,14 @@
-"""S3-compatible image upload service.
-
-Set S3_BUCKET, S3_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY
-in .env. Falls back to a local /uploads directory when no bucket is configured.
-Any S3-compatible provider (R2, MinIO, DigitalOcean Spaces) works by setting
-S3_ENDPOINT_URL in .env.
 """
-import os
+Image upload service powered by Cloudinary — https://cloudinary.com
+Free tier: 25 GB storage, 25 GB bandwidth/month, no credit card required.
+
+Setup:
+1. Sign up at cloudinary.com
+2. Go to Dashboard → copy Cloud Name, API Key, API Secret
+3. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in your .env
+
+Falls back to local /uploads directory when credentials are absent (dev/test).
+"""
 import uuid
 from pathlib import Path
 from app.config import get_settings
@@ -14,38 +17,33 @@ settings = get_settings()
 UPLOAD_DIR = Path("uploads")
 
 
-def _s3_client():
-    import boto3
-    kwargs = dict(
-        region_name=settings.S3_REGION or "us-east-1",
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-    )
-    endpoint = getattr(settings, "S3_ENDPOINT_URL", None)
-    if endpoint:
-        kwargs["endpoint_url"] = endpoint
-    return boto3.client("s3", **kwargs)
-
-
 def upload_image(file_bytes: bytes, filename: str, content_type: str = "image/jpeg") -> str:
-    """Upload image bytes and return the public URL."""
-    ext = Path(filename).suffix.lower() or ".jpg"
-    key = f"products/{uuid.uuid4().hex}{ext}"
+    """Upload an image and return its public URL."""
 
-    if settings.S3_BUCKET and settings.AWS_ACCESS_KEY_ID:
-        s3 = _s3_client()
-        s3.put_object(
-            Bucket=settings.S3_BUCKET,
-            Key=key,
-            Body=file_bytes,
-            ContentType=content_type,
-            ACL="public-read",
+    if settings.CLOUDINARY_CLOUD_NAME and settings.CLOUDINARY_API_KEY:
+        import cloudinary
+        import cloudinary.uploader
+        cloudinary.config(
+            cloud_name=settings.CLOUDINARY_CLOUD_NAME,
+            api_key=settings.CLOUDINARY_API_KEY,
+            api_secret=settings.CLOUDINARY_API_SECRET,
+            secure=True,
         )
-        region = settings.S3_REGION or "us-east-1"
-        return f"https://{settings.S3_BUCKET}.s3.{region}.amazonaws.com/{key}"
+        result = cloudinary.uploader.upload(
+            file_bytes,
+            folder="pantry/products",
+            public_id=uuid.uuid4().hex,
+            resource_type="image",
+            overwrite=False,
+            transformation=[
+                {"width": 800, "height": 800, "crop": "limit", "quality": "auto"},
+            ],
+        )
+        return result["secure_url"]
 
-    # Local fallback (dev only)
+    # Local fallback — dev only, not suitable for production
     UPLOAD_DIR.mkdir(exist_ok=True)
-    local_path = UPLOAD_DIR / key.replace("/", "_")
+    ext = Path(filename).suffix.lower() or ".jpg"
+    local_path = UPLOAD_DIR / f"{uuid.uuid4().hex}{ext}"
     local_path.write_bytes(file_bytes)
     return f"/uploads/{local_path.name}"
