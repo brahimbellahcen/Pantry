@@ -5,26 +5,28 @@ import { formatPrice } from '@/utils/format'
 import { Package, ShoppingBag, Users, DollarSign, AlertTriangle, Clock } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 
 const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null)
-  const [revenueData] = useState([
-    { month: 'May', revenue: 4200 }, { month: 'Jun', revenue: 5800 },
-    { month: 'Jul', revenue: 4900 }, { month: 'Aug', revenue: 7200 },
-    { month: 'Sep', revenue: 6800 }, { month: 'Oct', revenue: 9100 },
-  ])
-  const [ordersByStatus] = useState([
-    { name: 'Pending', value: 12 }, { name: 'Processing', value: 8 },
-    { name: 'Shipped', value: 15 }, { name: 'Delivered', value: 47 },
-    { name: 'Cancelled', value: 4 },
-  ])
+  const [revenue, setRevenue] = useState<any[]>([])
+  const [topProducts, setTopProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => { adminApi.getStats().then(setStats) }, [])
-  if (!stats) return <div className="flex justify-center py-20"><Spinner /></div>
+  useEffect(() => {
+    Promise.all([
+      adminApi.getStats(),
+      adminApi.getRevenueSeries(30),
+      adminApi.getTopProducts(5),
+    ]).then(([s, r, tp]) => {
+      setStats(s); setRevenue(r); setTopProducts(tp)
+    }).finally(() => setLoading(false))
+  }, [])
+
+  if (loading || !stats) return <div className="flex justify-center py-20"><Spinner /></div>
 
   const cards = [
     { label: 'Total Revenue', value: formatPrice(stats.total_revenue), icon: DollarSign, color: 'text-green-600 bg-green-100' },
@@ -35,9 +37,12 @@ export default function AdminDashboard() {
     { label: 'Low Stock', value: stats.low_stock_products, icon: AlertTriangle, color: 'text-red-600 bg-red-100' },
   ]
 
+  const hasRevenue = revenue.length > 0
+  const hasTopProducts = topProducts.length > 0
+
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -45,20 +50,22 @@ export default function AdminDashboard() {
           <div key={label} className="card p-5 flex items-center gap-4">
             <div className={`rounded-xl p-3 ${color}`}><Icon className="h-5 w-5" /></div>
             <div>
-              <p className="text-sm text-gray-500">{label}</p>
-              <p className="text-xl font-bold text-gray-900">{value}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{value}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts row */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        {/* Revenue area chart */}
-        <div className="card p-5 lg:col-span-2">
-          <h2 className="font-semibold text-gray-900 mb-4">Revenue (last 6 months)</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={revenueData}>
+      {/* Revenue chart — real DB data */}
+      <div className="card p-5">
+        <h2 className="font-semibold text-gray-900 dark:text-white mb-4">
+          Revenue — last 30 days
+          {!hasRevenue && <span className="ml-2 text-xs text-gray-400">(no paid orders yet)</span>}
+        </h2>
+        {hasRevenue ? (
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={revenue}>
               <defs>
                 <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
@@ -66,30 +73,61 @@ export default function AdminDashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v}`} />
-              <Tooltip formatter={(v: number) => [`$${v}`, 'Revenue']} />
-              <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2}
-                fill="url(#colorRev)" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }}
+                tickFormatter={d => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `$${v}`} />
+              <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, 'Revenue']}
+                labelFormatter={d => new Date(d).toLocaleDateString()} />
+              <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2} fill="url(#colorRev)" />
             </AreaChart>
           </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+            Revenue data will appear here once orders are marked as paid.
+          </div>
+        )}
+      </div>
+
+      {/* Top products + orders per day */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Top Products</h2>
+          {hasTopProducts ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={topProducts} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={100} />
+                <Tooltip formatter={(v: number) => [v, 'Units sold']} />
+                <Bar dataKey="units" fill="#22c55e" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+              Top products appear after first orders.
+            </div>
+          )}
         </div>
 
-        {/* Orders by status pie */}
         <div className="card p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Orders by Status</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={ordersByStatus} cx="50%" cy="50%" innerRadius={55} outerRadius={80}
-                paddingAngle={3} dataKey="value">
-                {ordersByStatus.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <h2 className="font-semibold text-gray-900 dark:text-white mb-4">Orders per day</h2>
+          {hasRevenue ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={revenue}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }}
+                  tickFormatter={d => new Date(d).toLocaleDateString('en', { month: 'short', day: 'numeric' })} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                <Tooltip formatter={(v: number) => [v, 'Orders']}
+                  labelFormatter={d => new Date(d).toLocaleDateString()} />
+                <Area type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={2} fill="#eff6ff" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+              Order data will appear here once orders are placed.
+            </div>
+          )}
         </div>
       </div>
     </div>

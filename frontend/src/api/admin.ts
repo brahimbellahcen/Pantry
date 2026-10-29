@@ -4,6 +4,12 @@ import type { Product, Category, Order, OrderSummary, Page, User } from '@/types
 export const adminApi = {
   // Stats
   getStats: () => apiClient.get('/admin/stats').then((r) => r.data),
+  getRevenueSeries: (days = 30) =>
+    apiClient.get('/admin/stats/revenue-series', { params: { days } }).then(r => r.data),
+  getTopProducts: (limit = 5) =>
+    apiClient.get('/admin/stats/top-products', { params: { limit } }).then(r => r.data),
+  getCustomerGrowth: (days = 30) =>
+    apiClient.get('/admin/stats/customer-growth', { params: { days } }).then(r => r.data),
 
   // Products
   listProducts: (include_inactive = false) =>
