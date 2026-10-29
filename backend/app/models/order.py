@@ -26,6 +26,8 @@ class Order(Base):
     estimated_delivery: Mapped[date | None] = mapped_column(Date, nullable=True)
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivery_slot_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("delivery_slots.id"), nullable=True)
+    loyalty_points_used: Mapped[int] = mapped_column(Integer, default=0)
+    loyalty_points_earned: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

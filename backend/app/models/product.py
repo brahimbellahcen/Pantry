@@ -30,6 +30,8 @@ class Product(Base):
     cart_items: Mapped[list["CartItem"]] = relationship("CartItem", back_populates="product")
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem", back_populates="product")
     reviews: Mapped[list["Review"]] = relationship("Review", back_populates="product")
+    variants: Mapped[list["ProductVariant"]] = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", order_by="ProductVariant.sort_order")
+    flash_sales: Mapped[list["FlashSale"]] = relationship("FlashSale", back_populates="product", cascade="all, delete-orphan")
 
 
 class Inventory(Base):
